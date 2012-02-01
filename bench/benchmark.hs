@@ -1,5 +1,6 @@
 #!/usr/bin/env runhaskell
 {-# LANGUAGE NamedFieldPuns, ScopedTypeVariables, RecordWildCards #-}
+{-# LANGUAGE PackageImports #-}
 
 -- NOTE: Under 7.2 I'm running into this HSH problem:
 
@@ -57,7 +58,7 @@ import System.Process (system)
 --import GHC.Conc (numCapabilities)
 import HSH
 import Prelude hiding (log)
-import Control.Monad.Reader
+import "mtl" Control.Monad.Reader
 import Text.Printf
 import Debug.Trace
 import Data.Char (isSpace)
@@ -93,11 +94,11 @@ data BenchRun = BenchRun
  } deriving (Eq, Show)
 
 data Sched 
-   = Trace | Direct | Sparks | ContFree
+   = Trace | Direct | Sparks | ContFree | MetaShMem
    | None
- deriving (Eq, Show, Read, Ord)
+ deriving (Eq, Show, Read, Ord, Enum)
 
-allScheds = S.fromList [Trace, Direct, Sparks, ContFree, None]
+allScheds = S.fromList [Trace .. None]
 
 data Benchmark = Benchmark
  { name :: String
@@ -198,24 +199,26 @@ expandMode "ivars"   = ivarScheds
 expandMode "chans"   = [] -- Not working yet!
 
 -- Also allowing the specification of a specific scheduler:
-expandMode "Trace"    = [Trace]
-expandMode "Sparks"   = [Sparks]
-expandMode "Direct"   = [Direct]
-expandMode "ContFree" = [ContFree]
+expandMode "Trace"     = [Trace]
+expandMode "Sparks"    = [Sparks]
+expandMode "Direct"    = [Direct]
+expandMode "ContFree"  = [ContFree]
+expandMode "MetaShMem" = [MetaShMem]
 
 expandMode s = error$ "Unknown Scheduler or mode: " ++s
 
 -- Omitting Direct until its bugs are fixed:
-ivarScheds = [Trace, ContFree, Direct] 
+ivarScheds = [Trace, ContFree, Direct, MetaShMem] 
 
 schedToModule s = 
   case s of 
 --   Trace    -> "Control.Monad.Par"
-   Trace    -> "Control.Monad.Par.Scheds.Trace"
-   Direct   -> "Control.Monad.Par.Scheds.Direct"
-   ContFree -> "Control.Monad.Par.Scheds.ContFree"
-   Sparks   -> "Control.Monad.Par.Scheds.Sparks"
-   None     -> "qualified Control.Monad.Par as NotUsed"
+   Trace     -> "Control.Monad.Par.Scheds.Trace"
+   Direct    -> "Control.Monad.Par.Scheds.Direct"
+   ContFree  -> "Control.Monad.Par.Scheds.ContFree"
+   Sparks    -> "Control.Monad.Par.Scheds.Sparks"
+   MetaShMem -> "Control.Monad.Par.Meta.SharedMemoryOnly"
+   None      -> "qualified Control.Monad.Par as NotUsed"
   
 
 --------------------------------------------------------------------------------
